@@ -1,0 +1,15 @@
+# Python compiled files
+__pycache__/
+*.py[cod]
+
+# Django specific
+db.sqlite3
+*.log
+local_settings.py
+
+# If you're using a virtual environment
+venv/
+
+# Docker specific
+.env
+docker-compose.override.yml
