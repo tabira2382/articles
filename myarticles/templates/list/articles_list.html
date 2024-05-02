@@ -1,6 +1,7 @@
 {% for article in articles %}
-  <div>
+<div>
     <h3><a href="{{ article.url }}">{{ article.title }}</a></h3>
     <p>Author: {{ article.user.id }}</p>
-  </div>
+    <p>Tags: {{ article.tag_list }}</p>
+</div>
 {% endfor %}
