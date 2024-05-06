@@ -8,7 +8,8 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from .models import Like
-import logging
+from django.core.cache import cache
+
 
 
 
@@ -35,19 +36,31 @@ class ProfileView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        likes = self.request.user.likes.all()
+        user = self.request.user
+        likes = Like.objects.filter(user=user)
         liked_articles = [self.get_article_details(like.article_id) for like in likes]
         context['user'] = self.request.user
         context['liked_articles'] = liked_articles
-        print('liked_articles',liked_articles)
         return context
     
+    from django.core.cache import cache
+
     def get_article_details(self, article_id):
-        response = requests.get(f'https://qita.com/api/v2/items/{article_id}')
-        if response.status_code == 200:
-            return response.json()
-        return None
-    
+        # キャッシュから記事データを取得
+        article = cache.get(article_id)
+        if not article:
+            response = requests.get(f'https://qiita.com/api/v2/items/{article_id}')
+            if response.status_code == 200:
+                article = response.json()
+                # キャッシュに記事データを保存（例えば、5分間キャッシュする）
+                cache.set(article_id, article, timeout=300)
+            else:
+                print(f"Error from API: {response.text}")
+                return None
+        return article
+
+
+
 # いいね機能
 @login_required
 @require_POST
