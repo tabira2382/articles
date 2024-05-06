@@ -2,7 +2,17 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>My Profile</h1>
-    <p>Welcome, {{ user.username }}!</p>
-    <!-- ここにさらにユーザー情報を表示 -->
+<h1>My Profile</h1>
+<p>Welcome, {{ user.username }}!</p>
+<h2>Liked Articles</h2>
+<ul>
+    {% for article in liked_articles %}
+    <li>
+        <a href="{{ article.url }}">{{ article.title }}</a>
+        by {{ article.user.id }}
+    </li>
+    {% empty %}
+    <li>No articles liked yet.</li>
+    {% endfor %}
+</ul>
 {% endblock %}

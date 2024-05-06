@@ -6,6 +6,34 @@
     <h3><a href="{{ article.url }}">{{ article.title }}</a></h3>
     <p>Author: {{ article.user.id }}</p>
     <p>Tags: {{ article.tag_list }}</p>
+    <button class="like-btn" data-article-id="{{ article.id }}">Like</button>
 </div>
 {% endfor %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const likeButtons = document.querySelectorAll('.like-btn');
+        likeButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                const articleId = this.getAttribute('data-article-id');
+                fetch('{% url "like_article" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: 'article_id=' + articleId
+                }).then(response => response.json())
+                .then(data => {
+                    if (data.liked) {
+                        console.log('Article liked!');
+                    } else {
+                        console.log('Like removed or error occurred');
+                    }
+                });
+            });
+        });
+    });
+</script>
+    
 {% endblock %}
