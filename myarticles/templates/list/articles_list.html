@@ -1,39 +1,57 @@
 {% extends 'base.html' %}
 {% block content %}
 <hr>
+<input type="text" id="tag-filter" placeholder="タグで検索">
 {% for article in articles %}
-<div>
+<div class="article" id="article-{{ article.id }}" data-tags="{{ article.tag_list }}">
     <h3><a href="{{ article.url }}">{{ article.title }}</a></h3>
     <p>Author: {{ article.user.id }}</p>
     <p>Tags: {{ article.tag_list }}</p>
     <button class="like-btn" data-article-id="{{ article.id }}">Like</button>
+    <span class="likes-count" id="likes-count-{{ article.id }}">{{ article.likes_count }}</span> Likes
 </div>
 {% endfor %}
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const likeButtons = document.querySelectorAll('.like-btn');
-        likeButtons.forEach(button => {
-            button.addEventListener('click', function () {
-                const articleId = this.getAttribute('data-article-id');
-                fetch('{% url "like_article" %}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    },
-                    body: 'article_id=' + articleId
-                }).then(response => response.json())
-                .then(data => {
-                    if (data.liked) {
-                        console.log('Article liked!');
-                    } else {
-                        console.log('Like removed or error occurred');
-                    }
-                });
+document.addEventListener('DOMContentLoaded', function () {
+    const likeButtons = document.querySelectorAll('.like-btn');
+    likeButtons.forEach(button => {
+        button.addEventListener('click', function () {
+            const articleId = this.getAttribute('data-article-id');
+            fetch('{% url "like_article" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: 'article_id=' + articleId
+            }).then(response => response.json())
+            .then(data => {
+                console.log(data);  // サーバーからの応答をログに出力
+                if (data.liked) {
+                    // 数字のみを更新
+                    document.getElementById('likes-count-' + articleId).textContent = data.likes_count;
+                } else {
+                    console.log('Like removed or error occurred');
+                }
             });
         });
     });
+
+    // タグフィルター
+    const tagInput = document.getElementById('tag-filter');
+    tagInput.addEventListener('input', function(){
+        const filterValue = this.value.toLowerCase();
+        const articles = document.querySelectorAll('.article');
+        articles.forEach(article => {
+            const tags = article.getAttribute('data-tags').toLowerCase();
+            if (tags.includes(filterValue)){
+                article.style.display = '';
+            } else {
+                article.style.display = 'none';
+            }
+        });
+    });
+});
 </script>
-    
 {% endblock %}

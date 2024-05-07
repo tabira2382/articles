@@ -19,16 +19,26 @@ class Articles_listView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        response = requests.get('https://qiita.com/api/v2/items', params={'per_page': 20})
-        if response.status_code == 200:
-            articles = response.json()
-            for article in articles:
-                # タグデータの抽出と整形
-                article['tag_list'] = ', '.join([tag['name'] for tag in article['tags']])
-            context['articles'] = articles
+        cached_articles = cache.get('qiita_articles')
+        if cached_articles is None:
+            response = requests.get('https://qiita.com/api/v2/items', params={'per_page': 20})
+            if response.status_code == 200:
+                articles = response.json()
+                for article in articles:
+                    # タグデータの抽出と整形
+                    article['tag_list'] = ', '.join([tag['name'] for tag in article['tags']])
+                    # データベースからいいねの数を取得
+                    article['likes_count'] = Like.objects.filter(article_id=article['id']).count()
+                # キャッシュに記事リストを保存
+                cache.set('qiita_articles', articles, timeout=86400)
+            else:
+                articles = []
         else:
-            context['articles'] = []
+            articles = cached_articles
+        context['articles'] = articles
         return context
+
+
     
 # マイページ
 class ProfileView(LoginRequiredMixin, TemplateView):
@@ -52,8 +62,8 @@ class ProfileView(LoginRequiredMixin, TemplateView):
             response = requests.get(f'https://qiita.com/api/v2/items/{article_id}')
             if response.status_code == 200:
                 article = response.json()
-                # キャッシュに記事データを保存（例えば、5分間キャッシュする）
-                cache.set(article_id, article, timeout=300)
+                # キャッシュに記事データを保存（1日間キャッシュする）
+                cache.set(article_id, article, timeout=86400)
             else:
                 print(f"Error from API: {response.text}")
                 return None
@@ -61,10 +71,22 @@ class ProfileView(LoginRequiredMixin, TemplateView):
 
 
 
-# いいね機能
 @login_required
 @require_POST
 def like_article(request):
     article_id = request.POST.get('article_id')
-    _,created = Like.objects.get_or_create(user=request.user, article_id=article_id)
-    return JsonResponse({'liked': created})
+    _, created = Like.objects.get_or_create(user=request.user, article_id=article_id)
+    if created:
+        # キャッシュから記事を取得していいねの数を更新
+        cached_article = cache.get(article_id)
+        if cached_article:
+            cached_article['likes_count'] = Like.objects.filter(article_id=article_id).count()
+            cache.set(article_id, cached_article, timeout=86400)
+            likes_count = cached_article['likes_count']
+        else:
+            # キャッシュになければ直接データベースからいいねの数を取得
+            likes_count = Like.objects.filter(article_id=article_id).count()
+        return JsonResponse({'liked': True, 'likes_count': likes_count})
+    else:
+        likes_count = Like.objects.filter(article_id=article_id).count()
+        return JsonResponse({'liked': False, 'likes_count': likes_count})
