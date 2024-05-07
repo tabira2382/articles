@@ -9,10 +9,28 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from .models import Like
 from django.core.cache import cache
+from django.views.generic import FormView
+from .forms import SignupForm
+from django.urls import reverse_lazy
+from django.contrib.auth import login
+from django.http import HttpResponse
 
 
 
+class SignupView(FormView):
+    template_name = 'registration/signup.html'
+    form_class = SignupForm
+    success_url = reverse_lazy('article_list')
 
+    def form_valid(self, form):
+        user = form.save()
+        login(self.request, user)
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        # フォームが無効である場合、エラーをログに出力
+        print("Form errors:", form.errors)
+        return HttpResponse("Invalid form", status=400)
 # 記事一覧
 class Articles_listView(TemplateView):
     template_name = 'list/articles_list.html'
