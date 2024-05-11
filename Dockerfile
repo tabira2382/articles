@@ -2,7 +2,7 @@
 FROM python:3.9
 
 # MySQLクライアントライブラリをインストール
-RUN apt-get update && apt-get install -y libmysqlclient-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y libmariadb-dev-compat && rm -rf /var/lib/apt/lists/*
 
 # 作業ディレクトリを設定
 WORKDIR /articles
