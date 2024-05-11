@@ -2,8 +2,11 @@
 from .base_settings import *
 
 # 本番環境かどうかを環境変数から判断
-from .prod_settings import *
-try:
-    from .local_settings import *
-except:
-    pass
+import os
+if os.getenv('DJANGO_ENV') == 'production':
+    from .prod_settings import *
+else:
+    try:
+        from .local_settings import *
+    except ImportError:
+        pass
