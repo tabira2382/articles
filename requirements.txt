@@ -3,3 +3,5 @@ python-dotenv
 requests==2.25.1
 mysqlclient
 gunicorn
+djangorestframework
+django-cors-headers
