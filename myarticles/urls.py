@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import Articles_listView, ProfileView, like_article, SignupView
-from .api.views import LikeList
+from .api.views import *
 from .models import Like
 
 urlpatterns = [
@@ -8,5 +8,6 @@ urlpatterns = [
     path('profile/', ProfileView.as_view(), name='profile'),
     path('like/', like_article, name='like_article'),
     path('signup/', SignupView.as_view(), name='signup'),
-    path('api/likes/', LikeList.as_view(), name='api_likes')
+    path('api/articles/', ArticleListView.as_view(), name='api_articles'),
+    path('api/likes/', LikeList.as_view(), name='api_likes'),
 ]
