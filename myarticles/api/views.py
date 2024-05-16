@@ -3,9 +3,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
 from django.contrib.auth import login
 from ..models import Like
-from ..serializers import LikeSerializer, ArticleSerializer, UserSerializer, RegisterSerializer, LoginSerializer
+from ..serializers import LikeSerializer, ArticleSerializer, UserSerializer, RegisterSerializer, LoginSerializer, LikeArticleSerializer
 from django.core.cache import cache
 import requests
 
@@ -105,4 +106,29 @@ class ProfileAPI(APIView):
             'likes_count': Like.objects.filter(article_id=article_id).count()
 
         }
-            
+
+# いいね登録
+class LikeArticleAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, format=None):
+        serializer = LikeArticleSerializer(data=request.data)
+        if serializer.is_valid():
+            article_id = serializer.validated_data['article_id']
+            _, created = Like.objects.get_or_create(user=request.user, article_id=article_id)
+            if created:
+                # キャッシュから記事を取得していいねの数を更新
+                cached_article = cache.get(article_id)
+                if cached_article:
+                    cached_article['likes_count'] = Like.objects.filter(article_id=article_id).count()
+                    cache.set(article_id, cached_article, timeout=86400)
+                    likes_count = cached_article['likes_count']
+                else:
+                    # キャッシュになければ直接データベースからいいねの数を取得
+                    likes_count = Like.objects.filter(article_id=article_id).count()
+                return Response({'liked': True, 'likes_count': likes_count}, status=status.HTTP_201_CREATED)
+            else:
+                likes_count = Like.objects.filter(article_id=article_id).count()
+                return Response({'liked': False, 'likes_count': likes_count}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
