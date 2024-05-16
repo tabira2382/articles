@@ -32,7 +32,7 @@ class LoginSerializer(serializers.Serializer):
 class LikeSerializer(serializers.ModelSerializer):
   class Meta:
     model = Like
-    fields = ['user', 'aricle_id', 'created_at']
+    fields = ['id' ,'user', 'aricle_id', 'created_at']
 
 class ArticleSerializer(serializers.Serializer):
   id = serializers.CharField()

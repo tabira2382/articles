@@ -8,8 +8,9 @@ urlpatterns = [
     path('profile/', ProfileView.as_view(), name='profile'),
     path('like/', like_article, name='like_article'),
     path('signup/', SignupView.as_view(), name='signup'),
-    path('api/articles/', ArticleListView.as_view(), name='api_articles'),
-    path('api/likes/', LikeList.as_view(), name='api_likes'),
+    path('api/articles/', ArticleListAPI.as_view(), name='api_articles'),
+    path('api/likes/', LikeListAPI.as_view(), name='api_likes'),
     path('api/auth/register/', RegisterAPI.as_view(), name='register'),
     path('api/auth/login/', LoginAPI.as_view(), name='login'),
+    path('api/profile/', ProfileAPI.as_view(), name='api_profile'),
 ]
