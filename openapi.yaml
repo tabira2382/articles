@@ -1,0 +1,209 @@
+openapi: 3.0.0
+info:
+  title: Articles API
+  description: API documentation for the Articles application
+  version: 1.0.0
+servers:
+- url: http://localhost:8000
+  description: "ローカル環境"
+- url: http://160.251.215.141/articles/
+  description: "本番環境"
+paths:
+  /articles/api/auth/register/:
+    post:
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+              required:
+                - username
+                - email
+                - password
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  token:
+                    type: string
+        '400':
+          description: Bad request
+  /articles/api/auth/login/:
+    post:
+      summary: Log in a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+              required:
+                - username
+                - password
+      responses:
+        '200':
+          description: User logged in
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  token:
+                    type: string
+        '400':
+          description: Invalid credentials
+  /articles/api/likes/:
+    get:
+      summary: Get list of likes
+      responses:
+        '200':
+          description: A list of likes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Like'
+  /articles/api/profile/:
+    get:
+      summary: Get user profile and liked articles
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User profile and liked articles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  liked_articles:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Article'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: "認証情報が含まれていません。"
+  /articles/api/like/:
+    post:
+      summary: Like an article
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                article_id:
+                  type: string
+              required:
+                - article_id
+      responses:
+        '201':
+          description: Article liked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  liked:
+                    type: boolean
+                    example: true
+                  likes_count:
+                    type: integer
+        '200':
+          description: Article already liked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  liked:
+                    type: boolean
+                    example: false
+                  likes_count:
+                    type: integer
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: "Invalid input"
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+    Like:
+      type: object
+      properties:
+        id:
+          type: integer
+        user:
+          $ref: '#/components/schemas/User'
+        article_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    Article:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        url:
+          type: string
+        tag_list:
+          type: string
+        likes_count:
+          type: integer
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
