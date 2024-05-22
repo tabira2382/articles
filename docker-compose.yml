@@ -18,9 +18,15 @@ services:
       - DB_PORT=${DB_PORT}
     depends_on:
       - db
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   db:
     image: mysql:8.0
+    platform: linux/amd64
     ports:
       - "3306:3306"
     environment:
@@ -30,6 +36,11 @@ services:
       - MYSQL_PASSWORD=${DB_PASSWORD}
     volumes:
       - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
 volumes:
   mysql-data:
