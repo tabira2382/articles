@@ -52,8 +52,8 @@ class LikeListAPI(APIView):
 # 記事一覧API
 class ArticleListAPI(APIView):
     def get(self, request, format=None):
-        chached_articles = cache.get('qiita_articles')
-        if chached_articles is None:
+        cached_articles = cache.get('qiita_articles')
+        if cached_articles is None:
             response = requests.get('https://qiita.com/api/v2/items', params={'per_page': 20})
             if response.status_code == 200:
                 articles = response.json()
@@ -64,10 +64,13 @@ class ArticleListAPI(APIView):
             else:
                 articles = []
         else:
-            articles = chached_articles
+            # キャッシュから取得したデータを使用
+            articles = cached_articles
 
+        # 記事データをシリアライズ
         serializer = ArticleSerializer(articles, many=True)
         return Response(serializer.data)
+
     
 #マイページ
 class ProfileAPI(APIView):
@@ -118,17 +121,21 @@ class LikeArticleAPI(APIView):
             _, created = Like.objects.get_or_create(user=request.user, article_id=article_id)
             if created:
                 # キャッシュから記事を取得していいねの数を更新
-                cached_article = cache.get(article_id)
-                if cached_article:
-                    cached_article['likes_count'] = Like.objects.filter(article_id=article_id).count()
-                    cache.set(article_id, cached_article, timeout=86400)
-                    likes_count = cached_article['likes_count']
+                cached_articles = cache.get('qiita_articles')
+                if cached_articles:
+                    for article in cached_articles:
+                        if article['id'] == article_id:
+                            article['likes_count'] = Like.objects.filter(article_id=article_id).count()
+                            cache.set('qiita_articles', cached_articles, timeout=86400)
+                            likes_count = article['likes_count']
+                            break
                 else:
-                    # キャッシュになければ直接データベースからいいねの数を取得
+                    # キャッシュがない場合は直接データベースからいいねの数を取得
                     likes_count = Like.objects.filter(article_id=article_id).count()
                 return Response({'liked': True, 'likes_count': likes_count}, status=status.HTTP_201_CREATED)
             else:
                 likes_count = Like.objects.filter(article_id=article_id).count()
                 return Response({'liked': False, 'likes_count': likes_count}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
