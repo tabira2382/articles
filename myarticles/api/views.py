@@ -9,6 +9,22 @@ from ..models import Like
 from ..serializers import LikeSerializer, ArticleSerializer, UserSerializer, RegisterSerializer, LoginSerializer, LikeArticleSerializer
 from django.core.cache import cache
 import requests
+from bs4 import BeautifulSoup
+
+
+# OGP画像を取得する関数
+def get_og_image(url):
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            og_image = soup.find('meta', property='og:image')
+            if og_image and og_image['content']:
+                return og_image.get('content')
+    except Exception as e:
+        print(f"Error fetching OGP image: {e}")
+    return None
+
 
 # ユーザー登録
 class RegisterAPI(generics.GenericAPIView):
@@ -60,6 +76,9 @@ class ArticleListAPI(APIView):
                 for article in articles:
                     article['tag_list'] = ','.join([tag['name'] for tag in article['tags']])
                     article['likes_count'] = Like.objects.filter(article_id=article['id']).count()
+                    # OGP画像を取得
+                    article['image_url'] = get_og_image(article['url'])
+                cache.set('qiita_articles', articles, timeout=86400)
                 cache.set('qiita_articles', articles, timeout=86400)
             else:
                 articles = []

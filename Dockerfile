@@ -15,3 +15,6 @@ RUN pip install -r requirements.txt
 
 # プロジェクトファイルをコピー
 COPY . /articles/
+
+# サービスの起動
+CMD ["db:3306", "--", "python", "manage.py", "runserver", "0.0.0.0:8000"]
