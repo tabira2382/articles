@@ -65,32 +65,61 @@ class LikeListAPI(APIView):
         serializer = LikeSerializer(likes, many=True)
         return Response(serializer.data)
 
+# Qiitaの記事を取得する関数
+def fetch_qiita_articles():
+    response = requests.get('https://qiita.com/api/v2/items', params={'per_page': 20})
+    if response.status_code == 200:
+        articles = response.json()
+        for article in articles:
+            article['tag_list'] = ','.join([tag['name'] for tag in article['tags']])
+            article['likes_count'] = Like.objects.filter(article_id=article['id']).count()
+            article['image_url'] = get_og_image(article['url'])
+        return articles
+    return []
+
+# Zennの記事を取得する関数
+def fetch_zenn_articles():
+    response = requests.get('https://zenn.dev/api/articles', params={'order': 'latest'})
+    if response.status_code == 200:
+        articles = response.json()['articles']
+        for article in articles:
+            tags = article.get('topics', []) or article.get('tags', [])
+            article['tag_list'] = ','.join(tags)
+            article['likes_count'] = 0  # Zennにはいいねの数がない場合、仮に0に設定
+            article['url'] = f"https://zenn.dev{article['path']}"  # 完全なURLにする
+            article['image_url'] = get_og_image(article['url'])
+        return articles
+    return []
+
+# 並列実行で記事を取得する関数
+def fetch_articles_parallel():
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        qiita_future = executor.submit(fetch_qiita_articles)
+        zenn_future = executor.submit(fetch_zenn_articles)
+        qiita_articles = qiita_future.result()
+        zenn_articles = zenn_future.result()
+    return qiita_articles + zenn_articles
+
 # 記事一覧API
 class ArticleListAPI(APIView):
     def get(self, request, format=None):
-        cached_articles = cache.get('qiita_articles')
-        if cached_articles is None:
-            response = requests.get('https://qiita.com/api/v2/items', params={'per_page': 20})
-            if response.status_code == 200:
-                articles = response.json()
-                for article in articles:
-                    article['tag_list'] = ','.join([tag['name'] for tag in article['tags']])
-                    article['likes_count'] = Like.objects.filter(article_id=article['id']).count()
-                    # OGP画像を取得
-                    article['image_url'] = get_og_image(article['url'])
-                cache.set('qiita_articles', articles, timeout=86400)
-                cache.set('qiita_articles', articles, timeout=86400)
-            else:
-                articles = []
+        # cache.delete('qiita_articles')  # キャッシュのクリア
+        # cache.delete('zenn_articles')  # Zennの記事用のキャッシュもクリア
+        cached_qiita_articles = cache.get('qiita_articles')
+        cached_zenn_articles = cache.get('zenn_articles')
+        if cached_qiita_articles is None or cached_zenn_articles is None:
+            qiita_articles = fetch_qiita_articles()
+            zenn_articles = fetch_zenn_articles()
+            articles = qiita_articles + zenn_articles
+            cache.set('qiita_articles', qiita_articles, timeout=86400)
+            cache.set('zenn_articles', zenn_articles, timeout=86400)
         else:
-            # キャッシュから取得したデータを使用
-            articles = cached_articles
+            articles = cached_qiita_articles + cached_zenn_articles
 
         # 記事データをシリアライズ
         serializer = ArticleSerializer(articles, many=True)
         return Response(serializer.data)
 
-    
 #マイページ
 class ProfileAPI(APIView):
     permission_classes = (IsAuthenticated,)
