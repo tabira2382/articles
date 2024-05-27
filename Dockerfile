@@ -4,6 +4,9 @@ FROM python:3.9
 # MySQLクライアントライブラリをインストール
 RUN apt-get update && apt-get install -y libmariadb-dev-compat && rm -rf /var/lib/apt/lists/*
 
+# lxmlライブラリをインストール
+RUN apt-get update && apt-get install -y libxml2-dev libxslt-dev
+
 # 作業ディレクトリを設定
 WORKDIR /articles
 

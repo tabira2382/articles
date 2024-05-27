@@ -6,3 +6,4 @@ gunicorn
 djangorestframework
 django-cors-headers
 beautifulsoup4
+lxml

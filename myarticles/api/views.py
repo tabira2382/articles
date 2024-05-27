@@ -10,6 +10,11 @@ from ..serializers import LikeSerializer, ArticleSerializer, UserSerializer, Reg
 from django.core.cache import cache
 import requests
 from bs4 import BeautifulSoup
+import logging
+
+# ロギングの設定
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 # OGP画像を取得する関数
@@ -67,7 +72,7 @@ class LikeListAPI(APIView):
 
 # Qiitaの記事を取得する関数
 def fetch_qiita_articles():
-    response = requests.get('https://qiita.com/api/v2/items', params={'per_page': 20})
+    response = requests.get('https://qiita.com/api/v2/items', params={'per_page': 2})
     if response.status_code == 200:
         articles = response.json()
         for article in articles:
@@ -91,34 +96,63 @@ def fetch_zenn_articles():
         return articles
     return []
 
-# 並列実行で記事を取得する関数
-def fetch_articles_parallel():
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        qiita_future = executor.submit(fetch_qiita_articles)
-        zenn_future = executor.submit(fetch_zenn_articles)
-        qiita_articles = qiita_future.result()
-        zenn_articles = zenn_future.result()
-    return qiita_articles + zenn_articles
+# はてなブックマークのテクノロジー記事を取得する関数
+def fetch_hatena_tech_articles():
+    response = requests.get('https://b.hatena.ne.jp/hotentry/it.rss')
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.content, 'xml')
+        items = soup.find_all('item')
+        articles = []
+        for item in items:
+            title = item.find('title').text if item.find('title') else None
+            link = item.find('link').text if item.find('link') else None
+
+            if title and link:
+                try:
+                    entry_response = requests.get(f'https://b.hatena.ne.jp/entry/jsonlite/?url={link}')
+                    if entry_response.status_code == 200:
+                        entry_data = entry_response.json()
+                        article = {
+                            'id': entry_data['eid'],
+                            'title': entry_data['title'],
+                            'url': entry_data['url'],
+                            'tag_list': ','.join(entry_data.get('tags', [])),
+                            'likes_count': entry_data['count'],
+                            'image_url': entry_data['screenshot']
+                        }
+                        articles.append(article)
+                except Exception as e:
+                    logger.debug(f"Error fetching entry data for {link}: {e}")
+        return articles
+    return []
 
 # 記事一覧API
 class ArticleListAPI(APIView):
     def get(self, request, format=None):
-        # cache.delete('qiita_articles')  # キャッシュのクリア
-        # cache.delete('zenn_articles')  # Zennの記事用のキャッシュもクリア
+        # キャッシュをクリア（テスト用）
+        # cache.delete('qiita_articles')
+        # cache.delete('zenn_articles')
+        # cache.delete('hatena_articles')
+        
         cached_qiita_articles = cache.get('qiita_articles')
         cached_zenn_articles = cache.get('zenn_articles')
-        if cached_qiita_articles is None or cached_zenn_articles is None:
+        cached_hatena_articles = cache.get('hatena_articles')
+        
+        if not cached_qiita_articles or not cached_zenn_articles or not cached_hatena_articles:
             qiita_articles = fetch_qiita_articles()
             zenn_articles = fetch_zenn_articles()
-            articles = qiita_articles + zenn_articles
+            hatena_articles = fetch_hatena_tech_articles()
+            articles = qiita_articles + zenn_articles + hatena_articles
             cache.set('qiita_articles', qiita_articles, timeout=86400)
             cache.set('zenn_articles', zenn_articles, timeout=86400)
+            cache.set('hatena_articles', hatena_articles, timeout=86400)
         else:
-            articles = cached_qiita_articles + cached_zenn_articles
+            articles = cached_qiita_articles + cached_zenn_articles + cached_hatena_articles
 
         # 記事データをシリアライズ
         serializer = ArticleSerializer(articles, many=True)
         return Response(serializer.data)
+
 
 #マイページ
 class ProfileAPI(APIView):
