@@ -72,7 +72,7 @@ class LikeListAPI(APIView):
 
 # Qiitaの記事を取得する関数
 def fetch_qiita_articles():
-    response = requests.get('https://qiita.com/api/v2/items', params={'per_page': 2})
+    response = requests.get('https://qiita.com/api/v2/items', params={'per_page': 20})
     if response.status_code == 200:
         articles = response.json()
         for article in articles:
@@ -107,22 +107,27 @@ def fetch_hatena_tech_articles():
             title = item.find('title').text if item.find('title') else None
             link = item.find('link').text if item.find('link') else None
 
-            if title and link:
-                try:
-                    entry_response = requests.get(f'https://b.hatena.ne.jp/entry/jsonlite/?url={link}')
-                    if entry_response.status_code == 200:
-                        entry_data = entry_response.json()
-                        article = {
-                            'id': entry_data['eid'],
-                            'title': entry_data['title'],
-                            'url': entry_data['url'],
-                            'tag_list': ','.join(entry_data.get('tags', [])),
-                            'likes_count': entry_data['count'],
-                            'image_url': entry_data['screenshot']
-                        }
-                        articles.append(article)
-                except Exception as e:
-                    logger.debug(f"Error fetching entry data for {link}: {e}")
+            logger.debug(f"title: {title}")
+            logger.debug(f"link: {link}")
+            try:
+                entry_response = requests.get(f'https://b.hatena.ne.jp/entry/jsonlite/?url={link}')
+                if entry_response.status_code == 200:
+                    entry_data = entry_response.json()
+                    tags = [bookmark.get('tags', []) for bookmark in entry_data.get('bookmarks', [])]
+                    flat_tags = [tag for sublist in tags for tag in sublist]  # フラットなタグリストに変換
+                    unique_tags = list(set(flat_tags))  # 重複を排除
+                    article = {
+                        'id': entry_data['eid'],
+                        'title': entry_data['title'],
+                        'url': entry_data['url'],
+                        'tag_list': ','.join(unique_tags),
+                        'likes_count': entry_data['count'],
+                        'image_url': get_og_image(link)  # OGP画像を取得
+                    }
+                    articles.append(article)
+            except Exception as e:
+                logger.debug(f"Error fetching entry data for {link}: {e}")
+        logger.debug(f"Fetched {len(articles)} articles from Hatena")
         return articles
     return []
 
@@ -130,9 +135,9 @@ def fetch_hatena_tech_articles():
 class ArticleListAPI(APIView):
     def get(self, request, format=None):
         # キャッシュをクリア（テスト用）
-        # cache.delete('qiita_articles')
-        # cache.delete('zenn_articles')
-        # cache.delete('hatena_articles')
+        cache.delete('qiita_articles')
+        cache.delete('zenn_articles')
+        cache.delete('hatena_articles')
         
         cached_qiita_articles = cache.get('qiita_articles')
         cached_zenn_articles = cache.get('zenn_articles')
