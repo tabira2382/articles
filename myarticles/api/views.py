@@ -91,14 +91,11 @@ def fetch_zenn_articles():
             tags = article.get('topics', []) or article.get('tags', [])
             article['tag_list'] = ','.join(tags)
             article['article_like_count'] = article.get('liked_count', 0)  # Zenn APIからlikes_countを取得する場合
-            article['likes_count'] = 0  # Zennにはいいねの数がない場合、仮に0に設定
+            article['likes_count'] = Like.objects.filter(article_id=article['id']).count()
             article['url'] = f"https://zenn.dev{article['path']}"  # 完全なURLにする
             article['image_url'] = get_og_image(article['url'])
         return articles
     return []
-
-
-
 
 # はてなブックマークのテクノロジー記事を取得する関数
 def fetch_hatena_tech_articles():
@@ -118,13 +115,17 @@ def fetch_hatena_tech_articles():
                 logger.debug(f"entry_response: {entry_response}")
                 if entry_response.status_code == 200:
                     entry_data = entry_response.json()
+                    tags = [bookmark.get('tags', []) for bookmark in entry_data.get('bookmarks', [])]
+                    flat_tags = [tag for sublist in tags for tag in sublist]  # フラットなタグリストに変換
+                    unique_tags = list(set(flat_tags))  # 重複を排除
+                    article_id = entry_data['eid']
                     article = {
-                        'id': entry_data['eid'],
+                        'id': article_id,
                         'title': entry_data['title'],
                         'url': entry_data['url'],
-                        'tag_list': 'tech',  # 固定のタグリスト
+                        'tag_list': ','.join(unique_tags),
                         'article_like_count': entry_data['count'],
-                        'likes_count': 0,
+                        'likes_count': Like.objects.filter(article_id=article_id).count(),
                         'image_url': get_og_image(link)  # OGP画像を取得
                     }
                     articles.append(article)
@@ -132,8 +133,8 @@ def fetch_hatena_tech_articles():
                 logger.debug(f"Error fetching entry data for {link}: {e}")
         logger.debug(f"Fetched {len(articles)} articles from Hatena")
         return articles
-        # return articles
     return []
+
 
 # 記事一覧API
 class ArticleListAPI(APIView):
