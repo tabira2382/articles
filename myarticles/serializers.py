@@ -40,6 +40,7 @@ class ArticleSerializer(serializers.Serializer):
   url = serializers.URLField()
   tag_list = serializers.CharField()
   likes_count = serializers.IntegerField()
+  article_like_count = serializers.IntegerField(required=False, allow_null=True)
   image_url = serializers.URLField(required=False, allow_null=True)
 
 

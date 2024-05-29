@@ -62,7 +62,6 @@ class LoginAPI(generics.GenericAPIView):
             "token": token.key
         })
 
-
 # いいね取得
 class LikeListAPI(APIView):
     def get(self, request, format=None):
@@ -72,11 +71,12 @@ class LikeListAPI(APIView):
 
 # Qiitaの記事を取得する関数
 def fetch_qiita_articles():
-    response = requests.get('https://qiita.com/api/v2/items', params={'per_page': 2})
+    response = requests.get('https://qiita.com/api/v2/items', params={'query': 'stocks:>100', 'per_page': 10})
     if response.status_code == 200:
         articles = response.json()
         for article in articles:
             article['tag_list'] = ','.join([tag['name'] for tag in article['tags']])
+            article['article_like_count'] = article['likes_count']  # Qiita APIから直接取得
             article['likes_count'] = Like.objects.filter(article_id=article['id']).count()
             article['image_url'] = get_og_image(article['url'])
         return articles
@@ -90,7 +90,8 @@ def fetch_zenn_articles():
         for article in articles:
             tags = article.get('topics', []) or article.get('tags', [])
             article['tag_list'] = ','.join(tags)
-            article['likes_count'] = 0  # Zennにはいいねの数がない場合、仮に0に設定
+            article['article_like_count'] = article.get('liked_count', 0)  # Zenn APIからlikes_countを取得する場合
+            article['likes_count'] = Like.objects.filter(article_id=article['id']).count()
             article['url'] = f"https://zenn.dev{article['path']}"  # 完全なURLにする
             article['image_url'] = get_og_image(article['url'])
         return articles
@@ -107,24 +108,33 @@ def fetch_hatena_tech_articles():
             title = item.find('title').text if item.find('title') else None
             link = item.find('link').text if item.find('link') else None
 
-            if title and link:
-                try:
-                    entry_response = requests.get(f'https://b.hatena.ne.jp/entry/jsonlite/?url={link}')
-                    if entry_response.status_code == 200:
-                        entry_data = entry_response.json()
-                        article = {
-                            'id': entry_data['eid'],
-                            'title': entry_data['title'],
-                            'url': entry_data['url'],
-                            'tag_list': ','.join(entry_data.get('tags', [])),
-                            'likes_count': entry_data['count'],
-                            'image_url': entry_data['screenshot']
-                        }
-                        articles.append(article)
-                except Exception as e:
-                    logger.debug(f"Error fetching entry data for {link}: {e}")
+            logger.debug(f"title: {title}")
+            logger.debug(f"link: {link}")
+            try:
+                entry_response = requests.get(f'https://b.hatena.ne.jp/entry/jsonlite/?url={link}')
+                logger.debug(f"entry_response: {entry_response}")
+                if entry_response.status_code == 200:
+                    entry_data = entry_response.json()
+                    tags = [bookmark.get('tags', []) for bookmark in entry_data.get('bookmarks', [])]
+                    flat_tags = [tag for sublist in tags for tag in sublist]  # フラットなタグリストに変換
+                    unique_tags = list(set(flat_tags))  # 重複を排除
+                    article_id = entry_data['eid']
+                    article = {
+                        'id': article_id,
+                        'title': entry_data['title'],
+                        'url': entry_data['url'],
+                        'tag_list': ','.join(unique_tags),
+                        'article_like_count': entry_data['count'],
+                        'likes_count': Like.objects.filter(article_id=article_id).count(),
+                        'image_url': get_og_image(link)  # OGP画像を取得
+                    }
+                    articles.append(article)
+            except Exception as e:
+                logger.debug(f"Error fetching entry data for {link}: {e}")
+        logger.debug(f"Fetched {len(articles)} articles from Hatena")
         return articles
     return []
+
 
 # 記事一覧API
 class ArticleListAPI(APIView):
