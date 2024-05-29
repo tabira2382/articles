@@ -163,7 +163,39 @@ class ArticleListAPI(APIView):
         serializer = ArticleSerializer(articles, many=True)
         return Response(serializer.data)
 
+# 検索API
+class ArticleSearchAPI(APIView):
+    def get(self, request, format=None):
+        # キャッシュをクリア（テスト用）
+        # cache.delete('qiita_articles')
+        # cache.delete('zenn_articles')
+        # cache.delete('hatena_articles')
+        keyword = request.query_params.get('keyword', '').lower()
+        
+        cached_qiita_articles = cache.get('qiita_articles')
+        cached_zenn_articles = cache.get('zenn_articles')
+        cached_hatena_articles = cache.get('hatena_articles')
+        
+        if not cached_qiita_articles or not cached_zenn_articles or not cached_hatena_articles:
+            qiita_articles = fetch_qiita_articles()
+            zenn_articles = fetch_zenn_articles()
+            hatena_articles = fetch_hatena_tech_articles()
+            articles = qiita_articles + zenn_articles + hatena_articles
+            cache.set('qiita_articles', qiita_articles, timeout=86400)
+            cache.set('zenn_articles', zenn_articles, timeout=86400)
+            cache.set('hatena_articles', hatena_articles, timeout=86400)
+        else:
+            articles = cached_qiita_articles + cached_zenn_articles + cached_hatena_articles
 
+        if keyword:
+            articles = [article for article in articles if keyword in article['tag_list'].lower()]
+            
+        logger.debug(f"Found {len(articles)} articles matching keyword: {keyword}")
+
+        # 記事データをシリアライズ
+        serializer = ArticleSerializer(articles, many=True)
+        return Response(serializer.data)
+    
 #マイページ
 class ProfileAPI(APIView):
     permission_classes = (IsAuthenticated,)
