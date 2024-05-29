@@ -14,4 +14,5 @@ urlpatterns = [
     path('api/auth/login/', LoginAPI.as_view(), name='login'),
     path('api/profile/', ProfileAPI.as_view(), name='api_profile'),
     path('api/like/', LikeArticleAPI.as_view(), name='like_article_api'),
+    path('api/search/', ArticleSearchAPI.as_view(), name='article_search'),
 ]
