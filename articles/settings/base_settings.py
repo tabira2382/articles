@@ -13,10 +13,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'myarticles',
+    # 'myarticles',
     'rest_framework',
     'corsheaders',
     'rest_framework.authtoken',
+    'myarticles.apps.MyarticlesConfig',
 ]
 
 MIDDLEWARE = [
@@ -79,7 +80,12 @@ REST_FRAMEWORK = {
     ],
 }
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-]
-
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://redis:6379/1',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    }
+}

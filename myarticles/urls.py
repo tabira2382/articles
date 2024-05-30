@@ -15,4 +15,5 @@ urlpatterns = [
     path('api/profile/', ProfileAPI.as_view(), name='api_profile'),
     path('api/like/', LikeArticleAPI.as_view(), name='like_article_api'),
     path('api/search/', ArticleSearchAPI.as_view(), name='article_search'),
+    path('api/data/', get_cached_data, name='get_cached_data'),
 ]
