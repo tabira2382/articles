@@ -7,3 +7,6 @@ djangorestframework
 django-cors-headers
 beautifulsoup4
 lxml
+django-redis
+redis
+apscheduler

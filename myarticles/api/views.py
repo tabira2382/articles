@@ -12,6 +12,9 @@ import requests
 from bs4 import BeautifulSoup
 import logging
 
+from django.core.cache import cache
+from django.http import JsonResponse
+
 # ロギングの設定
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -140,9 +143,9 @@ def fetch_hatena_tech_articles():
 class ArticleListAPI(APIView):
     def get(self, request, format=None):
         # キャッシュをクリア（テスト用）
-        # cache.delete('qiita_articles')
-        # cache.delete('zenn_articles')
-        # cache.delete('hatena_articles')
+        cache.delete('qiita_articles')
+        cache.delete('zenn_articles')
+        cache.delete('hatena_articles')
         
         cached_qiita_articles = cache.get('qiita_articles')
         cached_zenn_articles = cache.get('zenn_articles')
@@ -263,3 +266,11 @@ class LikeArticleAPI(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+def get_cached_data(request):
+    qiita_articles = cache.get('qiita_articles')
+    zenn_articles = cache.get('zenn_articles')
+    hatena_articles = cache.get('hatena_articles')
+    if not qiita_articles or not zenn_articles or not hatena_articles:
+        return JsonResponse({'error': 'No data available'}, status=404)
+    articles = qiita_articles + zenn_articles + hatena_articles
+    return JsonResponse(articles, safe=False)
