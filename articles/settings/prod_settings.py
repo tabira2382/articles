@@ -15,9 +15,6 @@ DATABASES = {
     }
 }
 
-CORS_ALLOWED_ORIGINS = [
-    "https://articles-front-e1qkjr0mz-tabikyos-projects.vercel.app",
-]
 CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',')
 
 
