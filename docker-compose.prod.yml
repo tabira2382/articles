@@ -2,7 +2,7 @@ version: '3.8'
 services:
   web:
     build: .
-    command: gunicorn articles.wsgi:application --bind 0.0.0.0:8000
+    command: gunicorn articles.wsgi:application --bind 0.0.0.0:8000 --timeout 60
     volumes:
       - .:/articles
     environment:
