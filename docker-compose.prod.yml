@@ -42,10 +42,13 @@ services:
     image: nginx:1.19-alpine
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./config/nginx:/etc/nginx/conf.d
+      - /etc/letsencrypt:/etc/letsencrypt
       - static_volume:/articles/static
       - media_volume:/articles/media
+      - /var/www/certbot:/var/www/certbot
     depends_on:
       - web
 
