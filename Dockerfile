@@ -7,6 +7,12 @@ RUN apt-get update && apt-get install -y libmariadb-dev-compat && rm -rf /var/li
 # lxmlライブラリをインストール
 RUN apt-get update && apt-get install -y libxml2-dev libxslt-dev
 
+# dockerizeをダウンロードしてインストール
+RUN wget https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz \
+    && tar -C /usr/local/bin -xzvf dockerize-linux-amd64-v0.6.1.tar.gz \
+    && rm dockerize-linux-amd64-v0.6.1.tar.gz
+
+
 # 作業ディレクトリを設定
 WORKDIR /articles
 
@@ -20,4 +26,4 @@ RUN pip install -r requirements.txt
 COPY . /articles/
 
 # サービスの起動
-CMD ["db:3306", "--", "python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["dockerize","db:3306", "--", "python", "manage.py", "runserver", "0.0.0.0:8000"]

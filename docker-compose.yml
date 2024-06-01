@@ -3,7 +3,7 @@ version: '3.8'
 services:
   web:
     build: .
-    command: python -u manage.py runserver 0.0.0.0:8000
+    command: ["dockerize", "-wait", "tcp://db:3306", "-timeout", "60s", "python", "manage.py", "runserver", "0.0.0.0:8000"]
     volumes:
       - .:/articles
     ports:
@@ -52,7 +52,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-
 
 volumes:
   mysql-data:
