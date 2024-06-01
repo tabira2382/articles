@@ -143,9 +143,9 @@ def fetch_hatena_tech_articles():
 class ArticleListAPI(APIView):
     def get(self, request, format=None):
         # キャッシュをクリア（テスト用）
-        cache.delete('qiita_articles')
-        cache.delete('zenn_articles')
-        cache.delete('hatena_articles')
+        # cache.delete('qiita_articles')
+        # cache.delete('zenn_articles')
+        # cache.delete('hatena_articles')
         
         cached_qiita_articles = cache.get('qiita_articles')
         cached_zenn_articles = cache.get('zenn_articles')
