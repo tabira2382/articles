@@ -18,7 +18,7 @@ DATABASES = {
 # CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',')
 
 # 正規表現を使用してサブドメインを許可
-CORS_ALLOWED_ORIGIN_REGEXES = [
+CORS_ALLOWED_ORIGIN_REGaEXES = [
     os.getenv('CORS_ALLOWED_ORIGIN_REGEX')
 ]
 
